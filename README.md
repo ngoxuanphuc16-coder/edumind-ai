@@ -119,7 +119,7 @@ frontend/
 docker-compose.yml              # Qdrant + Ollama server thật (optional, cần Docker)
 ```
 
-## Đã biết còn thiếu (không giả vờ là xong)
+## Còn thiếu
 
 - **OCR** cho tài liệu scan: chưa implement (xem TODO trong `document_parser.py`).
 - **Persistent DB**: `document_store.py` hiện lưu trong RAM, mất khi restart server.
