@@ -1,0 +1,23 @@
+# Tùy chọn, dùng khi cần Qdrant/Ollama chạy như service thật thay vì mock/local-embedded.
+# Máy hiện tại CHƯA cài Docker (đã kiểm tra) -- cần cài Docker Desktop trước khi dùng file này.
+# Nếu không dùng file này: backend mặc định chạy Qdrant ở chế độ embedded (QDRANT_PATH),
+# không cần service nào ở đây.
+
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
+volumes:
+  qdrant_data:
+  ollama_data:

@@ -1,0 +1,11 @@
+fastapi>=0.141
+uvicorn[standard]>=0.52
+pydantic-settings>=2.15
+python-multipart>=0.0.32
+httpx>=0.28
+pypdf>=6.16
+networkx>=3.6
+langgraph>=1.2
+qdrant-client>=1.19
+rank-bm25>=0.2
+pytest>=8.0

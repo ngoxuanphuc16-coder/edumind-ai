@@ -1,0 +1,13 @@
+backend/.env
+backend/data/uploads/
+backend/data/qdrant_local/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/.pytest_cache/
+backend/server*.log
+frontend/node_modules/
+frontend/dist/
+frontend/vite.log
+frontend/.env
+frontend/.env.local
+frontend/.env.production.local
