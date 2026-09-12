@@ -1,0 +1,21 @@
+# Đánh thức backend Render free tier định kỳ, tránh nó tự ngủ sau 15 phút không
+# hoạt động (gây lỗi "Failed to fetch"/502 ở lần request đầu tiên sau khi ngủ).
+#
+# Lưu ý: Render free tier có giới hạn ~750 giờ instance/tháng dùng chung cho các
+# service free trong workspace -- chạy 24/7 cả tháng gần như dùng hết quota đó.
+# Nếu cần backend luôn sẵn sàng KHÔNG giới hạn giờ, cân nhắc nâng cấp Render lên
+# gói trả phí (Starter, ~$7/tháng) thay vì dùng workflow này (xem DEPLOY.md).
+
+name: Keep backend awake
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping backend health endpoint
+        run: curl -sf https://edumind-ai-backend-eea9.onrender.com/health

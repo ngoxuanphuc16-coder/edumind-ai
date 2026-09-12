@@ -70,7 +70,15 @@ khớp CHÍNH XÁC domain Vercel không (kể cả https://).
 - **Dữ liệu không bền vững**: `document_store` (RAM) và Qdrant embedded
   (`QDRANT_PATH=/tmp/...`) đều mất khi Render restart service (free tier tự ngủ sau 15 phút
   không hoạt động, hoặc mỗi lần deploy lại) -- upload lại tài liệu là bình thường, không phải bug.
-- **Cold start**: request đầu tiên sau khi service "ngủ" có thể mất 30-60s để backend thức dậy.
+- **Cold start**: request đầu tiên sau khi service "ngủ" có thể mất 30-60s để backend thức dậy,
+  đôi khi trả lỗi 502/"Failed to fetch" ngay lần đầu -- thử lại lần 2 sẽ được.
+  - Đã giảm bớt bằng [.github/workflows/keep-alive.yml](.github/workflows/keep-alive.yml) --
+    tự ping `/health` mỗi 10 phút để service không kịp ngủ. Không cần làm gì thêm, GitHub tự
+    chạy theo lịch sau khi push. Kiểm tra: tab **Actions** trên GitHub repo, workflow
+    "Keep backend awake" phải chạy xanh mỗi ~10 phút.
+  - Đánh đổi: Render free tier giới hạn ~750 giờ instance/tháng dùng chung cho các service free
+    trong workspace -- giữ backend thức 24/7 cả tháng gần như dùng hết quota đó. Nếu cần bỏ,
+    xoá file workflow hoặc tắt ở tab Actions.
 - **LLM là mock**: roadmap/citation/câu trả lời Q&A trên bản public là dữ liệu giả lập minh hoạ
   luồng hoạt động, không phải AI thật. Muốn AI thật, chạy local theo README.md (đã có Ollama).
 
