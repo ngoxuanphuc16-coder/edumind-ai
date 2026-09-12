@@ -1,6 +1,7 @@
 backend/.env
 backend/data/uploads/
 backend/data/qdrant_local/
+backend/data/app.db*
 backend/__pycache__/
 backend/**/__pycache__/
 backend/.pytest_cache/

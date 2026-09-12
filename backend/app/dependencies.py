@@ -2,9 +2,10 @@
 (tránh mở lại Qdrant local path hoặc tạo lại httpx.Client mỗi request)."""
 
 from functools import lru_cache
+from pathlib import Path
 
 from app.config import settings
-from app.services.document_store import document_store
+from app.services.document_store import SqlDocumentStore
 from app.services.llm_client import LLMClient, build_llm_client
 from app.services.vector_store import VectorStore
 
@@ -24,5 +25,11 @@ def get_vector_store() -> VectorStore:
     )
 
 
-def get_document_store():
-    return document_store
+@lru_cache
+def get_document_store() -> SqlDocumentStore:
+    Path(settings.db_path).parent.mkdir(parents=True, exist_ok=True)
+    return SqlDocumentStore(
+        db_path=settings.db_path,
+        sync_url=settings.turso_database_url,
+        auth_token=settings.turso_auth_token,
+    )

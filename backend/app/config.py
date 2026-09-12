@@ -26,7 +26,12 @@ class Settings(BaseSettings):
     faithfulness_threshold: float = 0.85
     citation_match_threshold: float = 90.0
 
-    upload_dir: str = "./data/uploads"
+    # DB lưu document/roadmap (libsql -- tương thích Turso). Mặc định file local,
+    # không cần tài khoản. Đặt turso_database_url + turso_auth_token để chuyển sang
+    # Turso remote thật (bền vững qua restart trên Render free tier).
+    db_path: str = "./data/app.db"
+    turso_database_url: Optional[str] = None
+    turso_auth_token: Optional[str] = None
 
     # Danh sách origin được phép gọi API, cách nhau bởi dấu phẩy. Mặc định chỉ cho
     # Vite dev server local; khi deploy public, thêm URL frontend thật vào đây nếu

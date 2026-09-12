@@ -1,8 +1,6 @@
 import uuid
-from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile
 
 from app.config import settings
 from app.dependencies import get_document_store, get_llm_client, get_vector_store
@@ -10,7 +8,7 @@ from app.graph.pipeline import build_graph
 from app.graph.state import make_initial_state
 from app.schemas import DocumentRecord, ProcessResponse, UploadResponse
 from app.services.document_parser import DocumentParseError, parse_pdf_to_chunks
-from app.services.document_store import InMemoryDocumentStore
+from app.services.document_store import SqlDocumentStore
 from app.services.llm_client import LLMClient
 from app.services.vector_store import VectorStore
 
@@ -20,7 +18,7 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 @router.post("/upload", response_model=UploadResponse)
 async def upload_document(
     file: UploadFile,
-    store: InMemoryDocumentStore = Depends(get_document_store),
+    store: SqlDocumentStore = Depends(get_document_store),
     llm: LLMClient = Depends(get_llm_client),
     vector_store: VectorStore = Depends(get_vector_store),
 ):
@@ -28,15 +26,10 @@ async def upload_document(
         raise HTTPException(status_code=400, detail="Chỉ hỗ trợ file PDF ở giai đoạn này.")
 
     doc_id = str(uuid.uuid4())
-    upload_dir = Path(settings.upload_dir)
-    upload_dir.mkdir(parents=True, exist_ok=True)
-    file_path = upload_dir / f"{doc_id}.pdf"
-
-    content = await file.read()
-    file_path.write_bytes(content)
+    pdf_bytes = await file.read()
 
     try:
-        chunks = parse_pdf_to_chunks(str(file_path), doc_id=doc_id, document_name=file.filename)
+        chunks = parse_pdf_to_chunks(pdf_bytes, doc_id=doc_id, document_name=file.filename)
     except DocumentParseError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
@@ -47,7 +40,7 @@ async def upload_document(
     vector_store.upsert_chunks(chunks, embeddings)
 
     store.save(DocumentRecord(
-        doc_id=doc_id, document_name=file.filename, file_path=str(file_path), chunks=chunks,
+        doc_id=doc_id, document_name=file.filename, chunks=chunks, pdf_bytes=pdf_bytes,
     ))
 
     return UploadResponse(doc_id=doc_id, document_name=file.filename, num_chunks=len(chunks))
@@ -56,7 +49,7 @@ async def upload_document(
 @router.post("/{doc_id}/process", response_model=ProcessResponse)
 def process_document(
     doc_id: str,
-    store: InMemoryDocumentStore = Depends(get_document_store),
+    store: SqlDocumentStore = Depends(get_document_store),
     llm: LLMClient = Depends(get_llm_client),
 ):
     record = store.get(doc_id)
@@ -87,15 +80,15 @@ def process_document(
 
 
 @router.get("/{doc_id}/file")
-def get_document_file(doc_id: str, store: InMemoryDocumentStore = Depends(get_document_store)):
+def get_document_file(doc_id: str, store: SqlDocumentStore = Depends(get_document_store)):
     record = store.get(doc_id)
     if record is None:
         raise HTTPException(status_code=404, detail="Không tìm thấy tài liệu.")
-    return FileResponse(record.file_path, media_type="application/pdf", filename=record.document_name)
+    return Response(content=record.pdf_bytes, media_type="application/pdf")
 
 
 @router.get("/{doc_id}/roadmap")
-def get_roadmap(doc_id: str, store: InMemoryDocumentStore = Depends(get_document_store)):
+def get_roadmap(doc_id: str, store: SqlDocumentStore = Depends(get_document_store)):
     record = store.get(doc_id)
     if record is None:
         raise HTTPException(status_code=404, detail="Không tìm thấy tài liệu.")

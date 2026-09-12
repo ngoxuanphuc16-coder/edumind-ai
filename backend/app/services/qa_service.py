@@ -30,6 +30,13 @@ def answer_question(
     settings: Settings,
     top_k: int = 5,
 ) -> dict:
+    # Qdrant embedded chạy trên ổ đĩa tạm của Render, mất khi service restart --
+    # dù chunks đã bền vững trong DB (Turso). Phát hiện qua count_for_doc == 0 và
+    # tự embed lại trước khi search, thay vì trả lời "không tìm thấy" sai lệch.
+    if all_chunks and vector_store.count_for_doc(doc_id) == 0:
+        embeddings = llm.embed([c["text"] for c in all_chunks])
+        vector_store.upsert_chunks(all_chunks, embeddings)
+
     retrieved = hybrid_search(question, doc_id, all_chunks, llm, vector_store, top_k=top_k)
 
     if not retrieved:

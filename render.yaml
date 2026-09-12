@@ -1,23 +1,33 @@
 # Render Blueprint cho backend. Tại render.com: New -> Blueprint -> chọn repo này ->
 # Render tự đọc file này. Frontend KHÔNG deploy bằng file này -- deploy riêng qua
 # Vercel (xem DEPLOY.md), vì Vercel host static site tốt hơn Render cho việc đó.
+#
+# Dùng runtime: docker (thay vì native Python buildpack trước đây) vì OCR cần
+# cài Tesseract -- xem backend/Dockerfile. Build sẽ chậm hơn build Python
+# thường (2-5 phút) do phải cài thêm apt packages, có thể 5-8 phút.
 
 services:
   - type: web
     name: edumind-ai-backend
-    runtime: python
-    rootDir: backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
     plan: free
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
       - key: LLM_PROVIDER
         value: mock
       - key: QDRANT_PATH
         value: /tmp/qdrant_local
-      - key: UPLOAD_DIR
-        value: /tmp/uploads
+      - key: DB_PATH
+        value: /tmp/app.db
+      # Turso (DB bền vững, xem README mục "DB thật") -- để trống ở đây, bạn tự
+      # điền trên Render dashboard sau khi tạo database Turso (sync: false =
+      # Render không ghi giá trị vào blueprint, tránh lộ credential trong git).
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
       # CORS: mặc định trong code đã cho phép mọi https://edumind-*.vercel.app (xem
       # app/config.py cors_origin_regex) -- không cần set CORS_ORIGINS thủ công mỗi
       # lần Vercel đổi URL deploy. Chỉ cần set CORS_ORIGINS ở đây nếu sau này gắn

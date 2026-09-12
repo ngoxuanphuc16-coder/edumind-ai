@@ -5,9 +5,11 @@ Qdrant cho vector store, Ollama cho LLM local.
 
 ## Trạng thái hiện tại (đã test)
 
-- Backend: 14/14 test pass (`pytest`) -- gồm vòng lặp fact-check (3 nhánh: approved ngay /
+- Backend: 23/23 test pass (`pytest`) -- gồm vòng lặp fact-check (3 nhánh: approved ngay /
   approved sau refine / approved_with_warning), Q&A retrieval (hybrid search, grounding, doc_id
-  filter), và endpoint phục vụ file PDF gốc.
+  filter), endpoint phục vụ file PDF gốc, DB bền vững (libsql/Turso), và OCR fallback.
+- Đã verify qua HTTP server thật (không chỉ pytest): upload → process → roadmap → file → ask,
+  **rồi restart server**, xác nhận tài liệu vẫn truy cập được (đúng mục tiêu "DB thật thay RAM").
 - End-to-end thật qua browser (không chỉ curl):
   1. Upload PDF → embed vào Qdrant ngay lúc upload → chạy graph 6 node → trả roadmap+quiz.
   2. Hỏi đáp (Q&A) về tài liệu vừa upload -- hoạt động ngay sau /upload, độc lập với /process.
@@ -56,6 +58,51 @@ thuộc `highlightQuote` (chạy lại mỗi lần đổi, độc lập với vi
 tìm thấy match -- khi đó UI hiện dòng "không tìm thấy đúng câu trích trên trang này" thay vì
 highlight sai chỗ.
 
+## DB thật (libsql/Turso) -- thay cho lưu RAM
+
+`app/services/document_store.py` (`SqlDocumentStore`) lưu document/roadmap/**file PDF gốc**
+(dạng blob, không chỉ metadata) qua `libsql` -- cùng 1 client code chạy được với file SQLite
+local (mặc định, không cần tài khoản) lẫn database Turso từ xa (production).
+
+**Vì sao lưu cả file PDF, không chỉ metadata**: nếu chỉ lưu roadmap mà không lưu file gốc, sau
+restart roadmap vẫn còn nhưng bấm "xem PDF gốc" sẽ 404 -- mất tác dụng "hết mất dữ liệu". Router
+`/upload` giờ đọc bytes trực tiếp từ `UploadFile`, không ghi ra đĩa nữa (`document_parser.py`
+nhận `pdf_bytes`, không nhận path).
+
+**Điểm còn hở đã xử lý**: embedding trong Qdrant vẫn nằm trên ổ đĩa tạm (mất khi Render restart)
+dù chunks đã bền vững trong DB. `qa_service.answer_question` kiểm tra `vector_store.count_for_doc`
+-- nếu bằng 0 mà đã có chunks, tự embed lại trước khi search (xem
+`test_answer_question_reembeds_when_vector_store_lost_chunks`).
+
+**Để bật Turso thật (bắt buộc cho production, không thì vẫn mất dữ liệu như RAM cũ vì Render free
+tier có ổ đĩa tạm thời)**:
+```bash
+# 1. Tạo tài khoản free tại https://turso.tech, tạo 1 database
+# 2. Lấy connection URL + auth token (turso CLI hoặc dashboard)
+```
+Set `TURSO_DATABASE_URL` + `TURSO_AUTH_TOKEN` trong `backend/.env` (local) hoặc Render dashboard
+(production, xem `render.yaml`). Không set gì = chạy file SQLite local, đủ cho dev nhưng vẫn mất
+dữ liệu trên Render free tier khi restart.
+
+**Chưa test được với Turso remote thật** (chưa có tài khoản khi viết code này) -- cơ chế
+embedded-replica (`sync_url`) dựa theo tài liệu chính thức của `libsql`, cần verify lại khi có
+credentials thật.
+
+## OCR cho tài liệu scan
+
+Trang PDF không có text layer → render thành ảnh bằng `pypdfium2` (thư viện Python thuần) → OCR
+bằng `pytesseract` (`lang="vie+eng"`). Xem `_ocr_page()` trong `document_parser.py`.
+
+**Cần Tesseract cài trên máy chạy** -- máy dev hiện tại **chưa có Tesseract**, nên OCR chỉ được
+test bằng cách mock `pytesseract.image_to_string` (xem `test_document_parser.py`), chưa test OCR
+thật với ảnh scan thật. Để test/dùng OCR thật local: cài Tesseract cho Windows
+(https://github.com/UB-Mannheim/tesseract/wiki) + gói ngôn ngữ `vie`.
+
+**Trên Render**: đổi từ native Python buildpack sang Docker (`backend/Dockerfile`, cài
+`tesseract-ocr` + `tesseract-ocr-vie` qua apt) -- xem `render.yaml` (`runtime: docker`). Build sẽ
+chậm hơn (5-8 phút thay vì 2-5 phút). **Dockerfile chưa test build thật** (máy dev không có
+Docker) -- verify kỹ log build đầu tiên trên Render.
+
 ## Cần làm trước khi dùng LLM thật
 
 ```bash
@@ -77,7 +124,7 @@ tiếng Việt) -- chưa test được với LLM thật trong phiên này.
 ```bash
 cd backend
 pip install -r requirements.txt
-python -m pytest tests/ -v          # 5 test, chạy bằng mock, không cần Ollama
+python -m pytest tests/ -v          # 23 test, chạy bằng mock, không cần Ollama/Turso/Tesseract
 python -m uvicorn app.main:app --port 8123 --reload
 ```
 
@@ -108,8 +155,8 @@ backend/
     services/
       llm_client.py         # LLMClient protocol + MockLLMClient + OllamaLLMClient
       vector_store.py        # Qdrant wrapper (embedded local mode mặc định)
-      document_parser.py      # PDF -> chunks (pypdf; OCR CHƯA implement, xem TODO trong file)
-      document_store.py        # Lưu tạm trong RAM -- CHƯA phải DB thật
+      document_parser.py      # PDF -> chunks (pypdf + OCR fallback qua pypdfium2/pytesseract)
+      document_store.py        # SqlDocumentStore (libsql/Turso) -- bền vững, không còn RAM
     routers/documents.py      # upload / process / roadmap
   tests/
     test_pipeline.py          # Verify graph logic bằng mock (3 kịch bản retry)
@@ -121,9 +168,10 @@ docker-compose.yml              # Qdrant + Ollama server thật (optional, cần
 
 ## Còn thiếu
 
-- **OCR** cho tài liệu scan: chưa implement (xem TODO trong `document_parser.py`).
-- **Persistent DB**: `document_store.py` hiện lưu trong RAM, mất khi restart server.
-  Roadmap ở mục "Kế hoạch" cần thay bằng SQLite/Postgres khi làm tiếp.
+- **Turso remote thật**: code đã viết xong nhưng chưa test với credentials thật (xem mục "DB thật"
+  ở trên) -- cần bạn tạo tài khoản Turso rồi verify lại.
+- **OCR thật**: logic đã có nhưng chưa test với Tesseract thật (máy dev không có binary) hay
+  Dockerfile thật (máy dev không có Docker) -- cần verify sau khi Render build xong.
 - **Prompt cho Ollama thật**: chưa test với model thật, cần tinh chỉnh khi có kết quả.
 - **BM25 tokenize**: chưa có word segmentation tiếng Việt thật (xem TODO trong `hybrid_retrieval.py`).
 - **Highlight citation**: match bằng substring chính xác, chưa fuzzy như backend (xem giới hạn đã

@@ -34,11 +34,24 @@ git push -u origin main
 1. Vào https://render.com, đăng ký/đăng nhập bằng tài khoản GitHub.
 2. **New +** → **Blueprint** → chọn repo vừa push. Render tự đọc [render.yaml](render.yaml)
    ở gốc repo và đề xuất tạo service `edumind-ai-backend`.
-3. Bấm **Apply** / **Create**. Lần đầu build mất 2-5 phút (`pip install -r requirements.txt`).
+3. Bấm **Apply** / **Create**. Build lần đầu qua Docker (cài Tesseract cho OCR) mất **5-8 phút**,
+   lâu hơn build Python thường -- đừng tưởng bị treo.
 4. Sau khi deploy xong, Render cho 1 URL dạng `https://edumind-ai-backend.onrender.com` -- copy
    lại, cần cho bước 2.
 5. Kiểm tra: mở `https://<url-render-của-bạn>/health` trên trình duyệt, phải thấy
    `{"status":"ok","llm_provider":"mock"}`.
+
+### Bước 1b (tuỳ chọn nhưng khuyến nghị): bật DB bền vững qua Turso
+
+Không làm bước này thì tài liệu vẫn mất mỗi lần Render restart/ngủ (như trước, chỉ đỡ hơn ở chỗ
+roadmap/PDF gốc giờ nằm trong 1 file DB thay vì rải rác RAM + đĩa).
+
+1. Tạo tài khoản free tại https://turso.tech, tạo 1 database mới.
+2. Lấy **Database URL** (dạng `libsql://<ten>-<org>.turso.io`) và tạo 1 **Auth Token**.
+3. Vào Render dashboard → service `edumind-ai-backend` → **Environment** → điền:
+   - `TURSO_DATABASE_URL` = URL vừa lấy
+   - `TURSO_AUTH_TOKEN` = token vừa tạo
+4. Lưu -- Render tự restart service, giờ tài liệu bền vững thật qua mọi lần restart/ngủ/redeploy.
 
 ## Bước 2: Deploy frontend lên Vercel
 
@@ -67,9 +80,13 @@ khớp CHÍNH XÁC domain Vercel không (kể cả https://).
 
 ## Giới hạn của bản deploy free tier này (nêu rõ, không giấu)
 
-- **Dữ liệu không bền vững**: `document_store` (RAM) và Qdrant embedded
-  (`QDRANT_PATH=/tmp/...`) đều mất khi Render restart service (free tier tự ngủ sau 15 phút
-  không hoạt động, hoặc mỗi lần deploy lại) -- upload lại tài liệu là bình thường, không phải bug.
+- **Dữ liệu không bền vững NẾU chưa làm Bước 1b**: không set `TURSO_DATABASE_URL` thì DB vẫn là
+  file local trên ổ đĩa tạm của Render -- mất khi restart/ngủ, y hệt RAM cũ. Làm Bước 1b để hết
+  hẳn vấn đề này.
+- **Qdrant embedded vẫn luôn ephemeral** (`QDRANT_PATH=/tmp/...`) dù đã bật Turso -- nhưng
+  `qa_service.answer_question` tự phát hiện (đếm vector theo `doc_id` = 0) và embed lại từ chunks
+  đã lưu trong DB trước khi trả lời, nên Q&A vẫn hoạt động đúng sau restart, chỉ chậm hơn 1 chút
+  ở câu hỏi đầu tiên sau mỗi lần server thức dậy.
 - **Cold start**: request đầu tiên sau khi service "ngủ" có thể mất 30-60s để backend thức dậy,
   đôi khi trả lỗi 502/"Failed to fetch" ngay lần đầu -- thử lại lần 2 sẽ được.
   - Đã giảm bớt bằng [.github/workflows/keep-alive.yml](.github/workflows/keep-alive.yml) --

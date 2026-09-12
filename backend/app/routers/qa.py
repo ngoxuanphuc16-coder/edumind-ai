@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 from app.config import settings
 from app.dependencies import get_document_store, get_llm_client, get_vector_store
-from app.services.document_store import InMemoryDocumentStore
+from app.services.document_store import SqlDocumentStore
 from app.services.llm_client import LLMClient
 from app.services.qa_service import answer_question
 from app.services.vector_store import VectorStore
@@ -19,7 +19,7 @@ class AskRequest(BaseModel):
 def ask_question(
     doc_id: str,
     body: AskRequest,
-    store: InMemoryDocumentStore = Depends(get_document_store),
+    store: SqlDocumentStore = Depends(get_document_store),
     llm: LLMClient = Depends(get_llm_client),
     vector_store: VectorStore = Depends(get_vector_store),
 ):

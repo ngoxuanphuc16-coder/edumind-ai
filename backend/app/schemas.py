@@ -27,6 +27,6 @@ class ErrorResponse(BaseModel):
 class DocumentRecord(BaseModel):
     doc_id: str
     document_name: str
-    file_path: str
     chunks: list[dict]
     final_roadmap: Optional[dict] = None
+    pdf_bytes: bytes  # lưu thẳng trong DB (không dùng file_path trên đĩa) để bền vững qua restart

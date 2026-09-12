@@ -51,6 +51,16 @@ class VectorStore:
         )
         return response.points
 
+    def count_for_doc(self, doc_id: str) -> int:
+        """Dùng để phát hiện embedding bị mất (vd. Qdrant embedded chạy trên ổ đĩa
+        tạm của Render, mất khi restart dù chunks đã bền vững trong DB) -- xem
+        qa_service.answer_question, tự embed lại khi trả về 0."""
+        query_filter = qmodels.Filter(
+            must=[qmodels.FieldCondition(key="doc_id", match=qmodels.MatchValue(value=doc_id))]
+        )
+        result = self.client.count(collection_name=self.collection, count_filter=query_filter)
+        return result.count
+
     @staticmethod
     def _point_id(chunk_id: str) -> int:
         # Qdrant point id cần là int hoặc UUID; băm chunk_id thành int ổn định.
