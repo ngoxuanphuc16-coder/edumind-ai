@@ -29,9 +29,15 @@ class Settings(BaseSettings):
     upload_dir: str = "./data/uploads"
 
     # Danh sách origin được phép gọi API, cách nhau bởi dấu phẩy. Mặc định chỉ cho
-    # Vite dev server local; khi deploy public, set biến môi trường CORS_ORIGINS
-    # thành URL frontend thật (vd. https://edumind-ai.vercel.app).
+    # Vite dev server local; khi deploy public, thêm URL frontend thật vào đây nếu
+    # cần khớp chính xác 1 domain cụ thể (vd. custom domain riêng sau này).
     cors_origins: str = "http://localhost:5173"
+
+    # Vercel cấp 1 URL MỚI (có hash ngẫu nhiên) cho MỖI lần deploy, nên khớp CHÍNH XÁC
+    # 1 URL trong CORS_ORIGINS sẽ vỡ ngay lần deploy sau. Regex này khớp mọi
+    # subdomain *.vercel.app của đúng project (vd. edumind-ai-nxp2.vercel.app,
+    # edumind-<hash>-nxp2.vercel.app) mà không cần sửa mỗi lần deploy lại.
+    cors_origin_regex: Optional[str] = r"^https://edumind-.*\.vercel\.app$"
 
     @property
     def cors_origins_list(self) -> list[str]:

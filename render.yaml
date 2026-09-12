@@ -18,5 +18,7 @@ services:
         value: /tmp/qdrant_local
       - key: UPLOAD_DIR
         value: /tmp/uploads
-      - key: CORS_ORIGINS
-        value: "http://localhost:5173"   # THAY bằng URL Vercel thật sau khi deploy frontend (xem DEPLOY.md bước 4)
+      # CORS: mặc định trong code đã cho phép mọi https://edumind-*.vercel.app (xem
+      # app/config.py cors_origin_regex) -- không cần set CORS_ORIGINS thủ công mỗi
+      # lần Vercel đổi URL deploy. Chỉ cần set CORS_ORIGINS ở đây nếu sau này gắn
+      # custom domain riêng (không phải *.vercel.app).
