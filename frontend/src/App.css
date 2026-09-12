@@ -2,16 +2,15 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: 1.5rem;
-  max-width: 1200px;
+  max-width: 1240px;
   margin: 0 auto;
-  padding: 2rem 1rem;
-  font-family: system-ui, sans-serif;
+  padding: 2.5rem 1.25rem 4rem;
   text-align: left;
 }
 
 @media (min-width: 900px) {
   .layout {
-    grid-template-columns: 1.2fr 1fr;
+    grid-template-columns: 1.15fr 1fr;
     align-items: start;
   }
   .pdf-column {
@@ -20,108 +19,354 @@
   }
 }
 
-.subtitle {
-  color: #666;
-  margin-bottom: 1.5rem;
+/* ---------- Header ---------- */
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: rgba(34, 211, 238, 0.08);
+  border: 1px solid rgba(34, 211, 238, 0.3);
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  margin-bottom: 0.9rem;
 }
+
+.eyebrow::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+}
+
+h1.title {
+  font-size: 2.4rem;
+  letter-spacing: -0.02em;
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.subtitle {
+  color: var(--text-dim);
+  margin-bottom: 1.5rem;
+  max-width: 60ch;
+}
+
+/* ---------- Cards (base surface) ---------- */
+
+.panel {
+  background: linear-gradient(180deg, var(--surface), var(--surface-2));
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.25rem;
+}
+
+/* ---------- Upload ---------- */
 
 .upload-form {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.75rem;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px dashed var(--border-strong);
+  border-radius: 12px;
+}
+
+.upload-form input[type="file"] {
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 0.85rem;
+}
+
+.upload-form input[type="file"]::file-selector-button {
+  font-family: var(--sans);
+  font-weight: 600;
+  color: var(--bg);
+  background: var(--accent);
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 0.9rem;
+  margin-right: 0.75rem;
+  cursor: pointer;
+}
+
+button[type="submit"], .ask-form button {
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #04121a;
+  background: var(--accent-gradient);
+  border: none;
+  border-radius: 8px;
+  padding: 0.6rem 1.1rem;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+button[type="submit"]:hover:not(:disabled), .ask-form button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(34, 211, 238, 0.25);
+}
+
+button[type="submit"]:disabled, .ask-form button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .error {
-  color: #c0392b;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  color: var(--danger);
+  background: rgba(251, 113, 133, 0.1);
+  border: 1px solid rgba(251, 113, 133, 0.3);
+  border-radius: 8px;
+  padding: 0.6rem 0.85rem;
+  margin-bottom: 1rem;
 }
 
+/* ---------- Status pill ---------- */
+
 .status {
-  padding: 0.5rem 0.75rem;
-  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
   font-weight: 600;
+  margin-bottom: 1rem;
 }
 
 .status.approved {
-  background: #e8f8ee;
-  color: #1e7e34;
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid var(--success-border);
 }
 
 .status.approved_with_warning {
-  background: #fff8e6;
-  color: #a06a00;
+  background: var(--warning-bg);
+  color: var(--warning);
+  border: 1px solid var(--warning-border);
 }
+
+/* ---------- Citations ---------- */
 
 .citation {
   display: block;
   width: 100%;
   text-align: left;
-  font-size: 0.85rem;
-  color: #555;
-  margin: 0.25rem 0 0.5rem 0;
-  padding: 0.4rem 0.5rem;
-  background: none;
-  border: 1px dashed #33333340;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+  margin: 0.4rem 0;
+  padding: 0.55rem 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent-2);
   border-radius: 6px;
   cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .citation:hover {
-  background: #ffe06622;
-  border-color: #ffe066;
+  background: rgba(167, 139, 250, 0.08);
+  border-color: var(--accent-2);
+  color: var(--text);
+}
+
+/* ---------- Result / Roadmap ---------- */
+
+.result {
+  background: linear-gradient(180deg, var(--surface), var(--surface-2));
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.5rem;
+  margin-top: 1.25rem;
+}
+
+.result h2 {
+  font-size: 1.05rem;
+  margin-top: 1.25rem;
+}
+
+.result h2:first-of-type {
+  margin-top: 0;
 }
 
 .result ul, .result ol {
-  padding-left: 1.25rem;
+  padding-left: 1.1rem;
+  margin: 0;
 }
 
+.result li {
+  margin-bottom: 0.9rem;
+}
+
+.result li > strong {
+  font-weight: 600;
+}
+
+/* ---------- Ask panel (Q&A) ---------- */
+
 .ask-panel {
-  margin: 1.5rem 0;
-  padding: 1rem;
-  border: 1px solid #33333340;
-  border-radius: 8px;
+  margin: 1.25rem 0;
+  padding: 1.25rem;
+  background: linear-gradient(180deg, var(--surface), var(--surface-2));
+  border: 1px solid var(--border);
+  border-radius: 14px;
 }
 
 .ask-form {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
+  gap: 0.6rem;
+  margin: 0.75rem 0 1rem;
 }
 
 .ask-form input {
   flex: 1;
+  font-family: var(--sans);
+  font-size: 0.9rem;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 0.55rem 0.8rem;
+}
+
+.ask-form input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.15);
+}
+
+.ask-history {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 .ask-item {
-  padding: 0.75rem 0;
-  border-top: 1px solid #33333326;
+  padding: 0.9rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: 10px;
 }
 
 .ask-question {
   font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+
+.ask-answer {
+  margin: 0.4rem 0 0.6rem;
+  color: var(--text);
 }
 
 .confidence {
-  font-size: 0.85rem;
-  margin: 0.25rem 0;
+  display: inline-flex;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
 }
 
-.confidence.high { color: #1e7e34; }
-.confidence.low { color: #a06a00; }
+.confidence.high {
+  color: var(--success);
+  background: var(--success-bg);
+  border: 1px solid var(--success-border);
+}
+
+.confidence.low {
+  color: var(--warning);
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+}
+
+/* ---------- PDF column (terminal-style chrome) ---------- */
 
 .pdf-column {
-  border: 1px solid #33333340;
-  border-radius: 8px;
-  padding: 1rem;
+  background: linear-gradient(180deg, var(--surface), var(--surface-2));
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.pdf-column-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.pdf-column-header .dots {
+  display: flex;
+  gap: 5px;
+}
+
+.pdf-column-header .dots span {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.pdf-column-header .dots span:nth-child(1) { background: #fb7185; }
+.pdf-column-header .dots span:nth-child(2) { background: #fbbf24; }
+.pdf-column-header .dots span:nth-child(3) { background: #34d399; }
+
+.pdf-column-header .label {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.pdf-column-body {
+  padding: 1.25rem;
+}
+
+.pdf-column-body h2 {
+  font-size: 1.05rem;
+}
+
+.pdf-viewer {
+  margin-top: 0.75rem;
 }
 
 .pdf-viewer mark {
-  background: #ffe066;
+  background: var(--accent);
+  color: #04121a;
   border-radius: 2px;
+  padding: 0 1px;
 }
 
 .pdf-page-info {
-  margin-top: 0.5rem;
-  font-size: 0.85rem;
-  color: #666;
+  margin-top: 0.6rem;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.pdf-viewer .react-pdf__Document {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
 }

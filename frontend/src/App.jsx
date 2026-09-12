@@ -51,7 +51,8 @@ export default function App() {
   return (
     <div className="layout">
       <div className="main-column">
-        <h1>EduMind AI — Demo</h1>
+        <span className="eyebrow">LangGraph · Anti-Hallucination Pipeline</span>
+        <h1 className="title">EduMind AI</h1>
         <p className="subtitle">Upload PDF → sinh roadmap có trích dẫn, qua vòng lặp fact-check (LangGraph).</p>
 
         <form onSubmit={handleSubmit} className="upload-form">
@@ -101,13 +102,19 @@ export default function App() {
       </div>
 
       <div className="pdf-column">
-        <h2>Tài liệu gốc</h2>
-        <p className="subtitle">Click vào 1 citation để nhảy tới đúng trang + tô sáng đoạn trích.</p>
-        <PdfViewer
-          fileUrl={fileUrl}
-          pageNumber={selectedCitation?.page_number}
-          highlightQuote={selectedCitation?.exact_quote}
-        />
+        <div className="pdf-column-header">
+          <span className="dots"><span /><span /><span /></span>
+          <span className="label">tai_lieu_goc.pdf</span>
+        </div>
+        <div className="pdf-column-body">
+          <h2>Tài liệu gốc</h2>
+          <p className="subtitle">Click vào 1 citation để nhảy tới đúng trang + tô sáng đoạn trích.</p>
+          <PdfViewer
+            fileUrl={fileUrl}
+            pageNumber={selectedCitation?.page_number}
+            highlightQuote={selectedCitation?.exact_quote}
+          />
+        </div>
       </div>
     </div>
   );
