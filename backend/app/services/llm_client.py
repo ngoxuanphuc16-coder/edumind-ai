@@ -9,15 +9,18 @@ Tách interface (Protocol) khỏi implementation để:
 """
 
 import json
-from typing import List, Protocol
+from typing import List, Optional, Protocol
 
 import httpx
 
 from app.graph.state import Chunk
+from app.utils import slugify
 
 
 class LLMClient(Protocol):
-    def generate_roadmap(self, chunks: List[Chunk], feedback_history: List[str]) -> List[dict]: ...
+    def generate_roadmap(
+        self, chunks: List[Chunk], feedback_history: List[str], kg_triplets: Optional[List[dict]] = None
+    ) -> List[dict]: ...
 
     def judge_faithfulness(self, draft_roadmap: List[dict], chunks: List[Chunk]) -> dict: ...
 
@@ -42,23 +45,60 @@ class MockLLMClient:
         # (ValueError: could not broadcast input array ...).
         self.embedding_dim = embedding_dim
 
-    def generate_roadmap(self, chunks: List[Chunk], feedback_history: List[str]) -> List[dict]:
+    def generate_roadmap(
+        self, chunks: List[Chunk], feedback_history: List[str], kg_triplets: Optional[List[dict]] = None
+    ) -> List[dict]:
         if not chunks:
             return []
-        chunk = chunks[0]
-        quote = chunk["text"][:200] if feedback_history else "Khái niệm này không có trong tài liệu gốc (mock lần đầu)"
-        return [{
-            "node_id": "node_01",
-            "title": f"Khái niệm từ {chunk['document_name']} (trang {chunk['page_number']})",
-            "importance": "CRITICAL",
-            "summary": quote[:80],
-            "citations": [{
-                "document_name": chunk["document_name"],
-                "page_number": chunk["page_number"],
-                "exact_quote": quote,
-                "source_chunk_id": chunk["chunk_id"],
-            }],
-        }]
+        kg_triplets = kg_triplets or []
+        chunk_by_id = {c["chunk_id"]: c for c in chunks}
+
+        def make_node(node_id: str, title: str, chunk: Chunk, quote: str) -> dict:
+            return {
+                "node_id": node_id,
+                "title": title,
+                "importance": "CRITICAL",
+                "summary": quote[:80],
+                "citations": [{
+                    "document_name": chunk["document_name"],
+                    "page_number": chunk["page_number"],
+                    "exact_quote": quote,
+                    "source_chunk_id": chunk["chunk_id"],
+                }],
+            }
+
+        if not kg_triplets:
+            # Tài liệu quá ngắn để trích KG (vd. 1 chunk) -- fallback: 1 node duy nhất,
+            # không có graph_edges (build_dag_node sẽ trả graph_edges rỗng tương ứng).
+            chunk = chunks[0]
+            quote = chunk["text"][:200] if feedback_history else "Khái niệm này không có trong tài liệu gốc (mock lần đầu)"
+            return [make_node("node_01", f"Khái niệm từ {chunk['document_name']} (trang {chunk['page_number']})", chunk, quote)]
+
+        # Có KG -- 1 node cho mỗi khái niệm duy nhất, node_id = slug(tên khái niệm) để
+        # khớp CHÍNH XÁC với graph_edges (build_dag_node dùng cùng hàm slugify trên cùng
+        # tên khái niệm), nhờ đó frontend vẽ được sơ đồ node-cạnh nối liền mạch.
+        #
+        # QUAN TRỌNG: map concept -> chunk phải tra thẳng từ `chunks` (concept = chunk
+        # text[:30] theo đúng cách extract_kg_triplets mock dựng), KHÔNG được suy ra từ
+        # triplet["source_chunk_id"] -- vì source_chunk_id của 1 triplet chỉ đúng cho vai
+        # trò "subject" (chunk[i]); nếu gán luôn cho "object" (chunk[i+1]) thì object sẽ bị
+        # trỏ NHẦM sang chunk của subject, khiến citation/trang hiển thị sai (bug đã gặp
+        # khi test: node "QuickSort" trích dẫn nhầm sang trang của node đứng trước nó).
+        text_to_chunk = {c["text"][:30]: c["chunk_id"] for c in chunks}
+        concept_source_chunk: dict[str, str] = {}
+        for t in kg_triplets:
+            for concept in (t["subject"], t["object"]):
+                concept_source_chunk.setdefault(concept, text_to_chunk.get(concept, chunks[0]["chunk_id"]))
+
+        nodes = []
+        for i, (concept, source_chunk_id) in enumerate(concept_source_chunk.items()):
+            chunk = chunk_by_id.get(source_chunk_id, chunks[0])
+            # Mô phỏng lỗi ở node đầu tiên trong lần thử đầu, để vòng lặp fact-check vẫn
+            # có gì đó để "sửa" khi demo (giống hành vi cũ trước khi có nhiều node).
+            is_first_attempt_error = not feedback_history and i == 0
+            quote = "Khái niệm bịa, không có trong tài liệu gốc" if is_first_attempt_error else chunk["text"][:200]
+            nodes.append(make_node(slugify(concept), concept, chunk, quote))
+        return nodes
 
     def judge_faithfulness(self, draft_roadmap: List[dict], chunks: List[Chunk]) -> dict:
         return {"faithfulness_score": 0.97, "feedback": "[mock] giả định đạt ngưỡng trung thực."}
@@ -134,18 +174,29 @@ class OllamaLLMClient:
                 prompt = prompt + f"\n\nOutput trước đó KHÔNG phải JSON hợp lệ ({e}). Chỉ trả về JSON, không thêm chữ nào khác."
         raise OllamaResponseError(f"Model {model} không trả JSON hợp lệ sau {max_retries} lần retry: {last_error}")
 
-    def generate_roadmap(self, chunks: List[Chunk], feedback_history: List[str]) -> List[dict]:
+    def generate_roadmap(
+        self, chunks: List[Chunk], feedback_history: List[str], kg_triplets: Optional[List[dict]] = None
+    ) -> List[dict]:
         context = "\n\n".join(f"[Trang {c['page_number']}] {c['text']}" for c in chunks)
         feedback_block = ""
         if feedback_history:
             feedback_block = "\n\nCác lỗi ĐÃ PHÁT HIỆN ở những lần trước, PHẢI sửa:\n" + "\n".join(
                 f"- {f}" for f in feedback_history
             )
+        concepts = sorted({t["subject"] for t in (kg_triplets or [])} | {t["object"] for t in (kg_triplets or [])})
+        concept_block = ""
+        if concepts:
+            concept_block = (
+                "\n\nDanh sách khái niệm ĐÃ được trích xuất từ knowledge graph của tài liệu này -- "
+                "BẮT BUỘC dùng CHÍNH XÁC các tên này làm 'title' cho node tương ứng (không đổi cách viết), "
+                "để sơ đồ roadmap khớp với graph phụ thuộc đã dựng:\n" + "\n".join(f"- {c}" for c in concepts)
+            )
         prompt = f"""Bạn là trợ lý học tập. Dựa CHỈ VÀO nội dung tài liệu dưới đây, hãy trích ra các khái niệm
 quan trọng nhất thành một roadmap học tập. TUYỆT ĐỐI không thêm khái niệm không có trong tài liệu.
 
 Tài liệu:
 {context}
+{concept_block}
 {feedback_block}
 
 Trả về JSON theo đúng format:

@@ -209,6 +209,33 @@ button[type="submit"]:disabled, .ask-form button:disabled {
   margin-top: 0;
 }
 
+.result h2.section-gap {
+  margin-top: 1.75rem;
+}
+
+.roadmap-graph {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #070a14;
+  margin: 0.75rem 0 0.5rem;
+}
+
+.roadmap-graph .react-flow__controls-button {
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  fill: var(--text-dim);
+}
+
+.roadmap-graph .react-flow__controls-button:hover {
+  background: var(--surface);
+}
+
+.roadmap-graph .react-flow__attribution {
+  display: none;
+}
+
 .result ul, .result ol {
   padding-left: 1.1rem;
   margin: 0;

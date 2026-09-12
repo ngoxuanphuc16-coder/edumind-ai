@@ -2,6 +2,7 @@ import { useState } from "react";
 import { uploadDocument, processDocument, BASE_URL } from "./api";
 import AskPanel from "./AskPanel";
 import PdfViewer from "./PdfViewer";
+import RoadmapGraph from "./RoadmapGraph";
 import "./App.css";
 
 const STATUS_LABEL = {
@@ -73,6 +74,14 @@ export default function App() {
             </p>
 
             <h2>Roadmap</h2>
+            <p className="subtitle">Click 1 node để xem trích dẫn + nhảy tới trang PDF tương ứng.</p>
+            <RoadmapGraph
+              roadmap={result.roadmap}
+              edges={result.graph_edges}
+              onNodeSelect={setSelectedCitation}
+            />
+
+            <h2 className="section-gap">Chi tiết trích dẫn</h2>
             <ul>
               {result.roadmap.map((node) => (
                 <li key={node.node_id}>
@@ -83,15 +92,6 @@ export default function App() {
                 </li>
               ))}
             </ul>
-
-            {result.dag_order.length > 0 && (
-              <>
-                <h2>Thứ tự học (topological sort)</h2>
-                <ol>
-                  {result.dag_order.map((n) => <li key={n}>{n}</li>)}
-                </ol>
-              </>
-            )}
 
             <h2>Quiz</h2>
             <ul>

@@ -3,6 +3,7 @@ from app.graph.dag import detect_and_break_cycles, topological_sort
 from app.graph.state import StudyState
 from app.graph.verification import verify_citations_against_chunks
 from app.services.llm_client import LLMClient
+from app.utils import slugify
 
 
 def make_node_functions(llm: LLMClient, settings: Settings):
@@ -17,7 +18,14 @@ def make_node_functions(llm: LLMClient, settings: Settings):
         return {"kg_triplets": triplets}
 
     def generate_roadmap_node(state: StudyState) -> dict:
-        draft = llm.generate_roadmap(state["chunks"], state.get("feedback_history", []))
+        draft = llm.generate_roadmap(
+            state["chunks"], state.get("feedback_history", []), kg_triplets=state.get("kg_triplets", [])
+        )
+        # Ép node_id = slug(title) bất kể provider trả gì -- đảm bảo khớp CHÍNH XÁC với
+        # graph_edges (build_dag_node dùng cùng slugify trên tên khái niệm KG), kể cả khi
+        # dùng Ollama thật và model không tuân thủ đúng node_id đã yêu cầu trong prompt.
+        for node in draft:
+            node["node_id"] = slugify(node["title"])
         return {"draft_roadmap": draft}
 
     def fact_checker_node(state: StudyState) -> dict:
@@ -54,7 +62,11 @@ def make_node_functions(llm: LLMClient, settings: Settings):
 
     def build_dag_node(state: StudyState) -> dict:
         acyclic, broken = detect_and_break_cycles(state["kg_triplets"])
-        return {"dag_order": topological_sort(acyclic), "broken_cycles": broken}
+        edges = [
+            {"source": slugify(t["subject"]), "target": slugify(t["object"])}
+            for t in acyclic
+        ]
+        return {"dag_order": topological_sort(acyclic), "graph_edges": edges, "broken_cycles": broken}
 
     def generate_quiz_node(state: StudyState) -> dict:
         return {"quiz": llm.generate_quiz(state["draft_roadmap"])}
@@ -63,6 +75,7 @@ def make_node_functions(llm: LLMClient, settings: Settings):
         return {"final_roadmap": {
             "roadmap": state["draft_roadmap"],
             "dag_order": state["dag_order"],
+            "graph_edges": state["graph_edges"],
             "quiz": state["quiz"],
             "verification_status": state["verification_status"],
             "retry_count": state["retry_count"],

@@ -4,7 +4,7 @@ nhưng chạy qua code thật trong app/graph/, không phải script demo riêng
 from app.config import Settings
 from app.graph.pipeline import build_graph
 from app.graph.state import make_initial_state
-from app.services.llm_client import LLMClient
+from app.services.llm_client import LLMClient, MockLLMClient
 
 
 class ScenarioLLM:
@@ -14,7 +14,7 @@ class ScenarioLLM:
     def __init__(self, behavior: str):
         self.behavior = behavior
 
-    def generate_roadmap(self, chunks, feedback_history):
+    def generate_roadmap(self, chunks, feedback_history, kg_triplets=None):
         chunk = chunks[0]
         if self.behavior == "always_correct":
             quote = chunk["text"]
@@ -76,3 +76,26 @@ def test_final_roadmap_always_populated():
     for behavior in ("always_correct", "fixes_after_feedback", "never_fixes"):
         result = _run(behavior)
         assert result["final_roadmap"]  # không bao giờ rỗng, kể cả nhánh warning
+
+
+def test_graph_edges_reference_valid_node_ids():
+    """Tính năng roadmap dạng đồ thị (giống roadmap.sh) cần graph_edges.source/target
+    khớp CHÍNH XÁC với node_id trong roadmap -- nếu không frontend không vẽ được cạnh nối."""
+    settings = Settings(llm_provider="mock", max_retries=3, faithfulness_threshold=0.85)
+    llm = MockLLMClient(embedding_dim=8)
+    graph = build_graph(llm, settings)
+    chunks = [
+        {"chunk_id": "c1", "doc_id": "d1", "document_name": "doc.pdf", "page_number": 1, "text": "Mang va con tro."},
+        {"chunk_id": "c2", "doc_id": "d1", "document_name": "doc.pdf", "page_number": 2, "text": "QuickSort."},
+        {"chunk_id": "c3", "doc_id": "d1", "document_name": "doc.pdf", "page_number": 3, "text": "Do phuc tap."},
+    ]
+    state = make_initial_state(documents=[{"doc_id": "d1"}], chunks=chunks, kg_triplets=[])
+    result = graph.invoke(state)
+
+    final = result["final_roadmap"]
+    assert len(final["roadmap"]) > 1  # nhiều chunk -> nhiều khái niệm, không còn fallback 1 node
+    node_ids = {n["node_id"] for n in final["roadmap"]}
+    assert final["graph_edges"]  # phải có ít nhất 1 cạnh nối
+    for edge in final["graph_edges"]:
+        assert edge["source"] in node_ids
+        assert edge["target"] in node_ids

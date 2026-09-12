@@ -28,6 +28,7 @@ class StudyState(TypedDict):
     is_faithful: bool
     verification_status: Literal["pending", "approved", "approved_with_warning"]
     dag_order: List[str]
+    graph_edges: List[dict]   # [{"source": node_id, "target": node_id}], cùng slug với draft_roadmap node_id
     broken_cycles: List[tuple]
     quiz: List[dict]
     final_roadmap: dict
@@ -47,6 +48,7 @@ def make_initial_state(documents: List[dict], chunks: List[Chunk], kg_triplets: 
         "is_faithful": False,
         "verification_status": "pending",
         "dag_order": [],
+        "graph_edges": [],
         "broken_cycles": [],
         "quiz": [],
         "final_roadmap": {},

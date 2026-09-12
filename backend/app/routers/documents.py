@@ -80,6 +80,7 @@ def process_document(
         retry_count=result["final_roadmap"]["retry_count"],
         roadmap=result["final_roadmap"]["roadmap"],
         dag_order=result["final_roadmap"]["dag_order"],
+        graph_edges=result["final_roadmap"]["graph_edges"],
         quiz=result["final_roadmap"]["quiz"],
         broken_cycles_count=len(result.get("broken_cycles", [])),
     )

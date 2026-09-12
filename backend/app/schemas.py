@@ -15,6 +15,7 @@ class ProcessResponse(BaseModel):
     retry_count: int
     roadmap: list[dict]
     dag_order: list[str]
+    graph_edges: list[dict]
     quiz: list[dict]
     broken_cycles_count: int
 
