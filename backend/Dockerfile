@@ -1,8 +1,5 @@
 # Cần Docker (thay vì native Python buildpack của Render) vì OCR cần cài
 # Tesseract -- 1 binary hệ thống, không cài được qua pip/buildCommand thường.
-#
-# CHƯA test build này trên máy dev (không có Docker cài sẵn) -- verify lại
-# ngay sau khi Render build lần đầu, xem log build kỹ nếu deploy fail.
 
 FROM python:3.12-slim
 
@@ -14,7 +11,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# --timeout + --retries: mặc định pip không có giới hạn thời gian tổng, nên nếu 1
+# kết nối tới PyPI bị treo giữa chừng (gặp thật khi build lần đầu trên máy dev --
+# mất >40 phút không nhúc nhích ở gói numpy), nó chờ vô thời hạn thay vì bỏ và thử
+# lại. Ép timeout ngắn + retry nhiều lần để tự phục hồi khi gặp kết nối chập chờn.
+RUN pip install --no-cache-dir --timeout 30 --retries 10 -r requirements.txt
 
 COPY . .
 

@@ -93,15 +93,19 @@ credentials thật.
 Trang PDF không có text layer → render thành ảnh bằng `pypdfium2` (thư viện Python thuần) → OCR
 bằng `pytesseract` (`lang="vie+eng"`). Xem `_ocr_page()` trong `document_parser.py`.
 
-**Cần Tesseract cài trên máy chạy** -- máy dev hiện tại **chưa có Tesseract**, nên OCR chỉ được
-test bằng cách mock `pytesseract.image_to_string` (xem `test_document_parser.py`), chưa test OCR
-thật với ảnh scan thật. Để test/dùng OCR thật local: cài Tesseract cho Windows
+**Cần Tesseract cài trên máy chạy**. `pytest` chỉ mock `pytesseract.image_to_string` (không cần
+Tesseract để chạy test suite) -- nhưng OCR **thật** đã được verify: build `backend/Dockerfile`
+qua Docker Desktop local, chạy container thật, upload 1 PDF dạng ảnh (không text layer) và xác
+nhận Tesseract 5.5.0 (`eng`+`vie`) đọc đúng nội dung qua `/process`. Để dùng OCR thật ngoài
+container (vd. chạy uvicorn trực tiếp trên Windows): cài Tesseract cho Windows
 (https://github.com/UB-Mannheim/tesseract/wiki) + gói ngôn ngữ `vie`.
 
 **Trên Render**: đổi từ native Python buildpack sang Docker (`backend/Dockerfile`, cài
 `tesseract-ocr` + `tesseract-ocr-vie` qua apt) -- xem `render.yaml` (`runtime: docker`). Build sẽ
-chậm hơn (5-8 phút thay vì 2-5 phút). **Dockerfile chưa test build thật** (máy dev không có
-Docker) -- verify kỹ log build đầu tiên trên Render.
+chậm hơn (5-8 phút thay vì 2-5 phút) do phải tải nhiều gói Python hơn (`libsql`, `pypdfium2`,
+`pytesseract`) ngoài phần apt. Đã build + chạy container thành công trên máy dev qua Docker
+Desktop (bao gồm test OCR thật) -- rủi ro chính còn lại trên Render là tốc độ mạng CI-time, không
+phải lỗi Dockerfile.
 
 ## Cần làm trước khi dùng LLM thật
 
@@ -170,8 +174,9 @@ docker-compose.yml              # Qdrant + Ollama server thật (optional, cần
 
 - **Turso remote thật**: code đã viết xong nhưng chưa test với credentials thật (xem mục "DB thật"
   ở trên) -- cần bạn tạo tài khoản Turso rồi verify lại.
-- **OCR thật**: logic đã có nhưng chưa test với Tesseract thật (máy dev không có binary) hay
-  Dockerfile thật (máy dev không có Docker) -- cần verify sau khi Render build xong.
+- **OCR/Docker**: đã verify thật (build + chạy container + OCR ảnh thật qua Tesseract 5.5.0) trên
+  máy dev qua Docker Desktop -- còn lại chỉ là verify build trên chính Render (hạ tầng khác, dù
+  Dockerfile giống hệt).
 - **Prompt cho Ollama thật**: chưa test với model thật, cần tinh chỉnh khi có kết quả.
 - **BM25 tokenize**: chưa có word segmentation tiếng Việt thật (xem TODO trong `hybrid_retrieval.py`).
 - **Highlight citation**: match bằng substring chính xác, chưa fuzzy như backend (xem giới hạn đã
